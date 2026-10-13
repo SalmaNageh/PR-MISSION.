@@ -1,6 +1,6 @@
 import './App.css'
 import Challenge from './components/Challenge'
-
+import logo from './assets/enactus-logo-6.png'
 function App() {
   return (
     <div className="app">
@@ -8,11 +8,9 @@ function App() {
       {/* Navbar */}
       <nav className="navbar">
         <div className="brand-lockup">
-  <img
-    src="src/assets/enactus-logo-6.png"
-    alt="Enactus"
-    className="enactus-logo"
-  />
+          <img src={logo} alt="Enactus" className="enactus-logo"
+
+          />
 
   <span className="brand-divider"></span>
 
@@ -27,10 +25,19 @@ function App() {
           <a href="#challenge">Challenge</a>
         </div>
 
-        <button className="nav-button">
+        <button
+          className="nav-button"
+          type="button"
+          onClick={() => {
+            document.getElementById('challenge')?.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start',
+            });
+          }}
+        >
           Start Mission
         </button>
-      </nav>
+           </nav>
 
 
       {/* Hero */}
