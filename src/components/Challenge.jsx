@@ -1,7 +1,9 @@
 
 import { useMemo, useState } from "react";
 import { cases } from "../data/cases";
+import { quizQuestions } from "../data/quizQuestions";
 import "./Challenge.css";
+import TeamMode from "./TeamMode";
 
 const LEVELS = [
   {
@@ -65,6 +67,61 @@ function getLevelCases(levelId) {
   return cases.filter((item) => Number(item.level || 1) === levelId);
 }
 
+function getLevelQuizQuestions(levelId) {
+  const questionsPerLevel = 5;
+  const start = (levelId - 1) * questionsPerLevel;
+
+  return quizQuestions
+    .slice(start, start + questionsPerLevel)
+    .map((question) => {
+      // The quiz dataset uses a zero-based correctAnswer index.
+      const correctAnswer =
+        typeof question.correctAnswer === "number"
+          ? question.options[question.correctAnswer]
+          : question.correctAnswer;
+
+      return {
+        id: `mcq-${question.id}`,
+        type: "mcq",
+        level: levelId,
+        title: question.question,
+        question: question.question,
+        company: "PR Knowledge",
+        companyType: "PR Quiz",
+        difficulty: "Knowledge Check",
+        situation: question.question,
+        options: question.options,
+        correctAnswer,
+        explanation: question.explanation,
+        learningPoint: question.explanation,
+      };
+    });
+}
+
+function getIndividualQuestions(levelId) {
+  const scenarioQuestions = getLevelCases(levelId).map((item) => ({
+    ...item,
+    type: "scenario",
+  }));
+
+  const knowledgeQuestions = getLevelQuizQuestions(levelId);
+
+  // Interleave scenario questions and MCQs.
+  // Five scenarios + five MCQs = ten questions per level.
+  const combined = [];
+
+  for (
+    let i = 0;
+    i < Math.max(scenarioQuestions.length, knowledgeQuestions.length);
+    i++
+  ) {
+    if (scenarioQuestions[i]) combined.push(scenarioQuestions[i]);
+    if (knowledgeQuestions[i]) combined.push(knowledgeQuestions[i]);
+  }
+
+  return combined;
+}
+
 function getPitchType(caseItem) {
   return caseItem.correctAnswer;
 }
@@ -101,22 +158,29 @@ export default function Challenge() {
 
   const [scores, setScores] = useState({});
   const [playerStats, setPlayerStats] = useState({});
-
   const [lastRound, setLastRound] = useState(null);
 
   const activeTeams = teamNames.slice(0, teamCount);
 
   const activeCases = useMemo(() => {
     if (mode === "teams") {
-      return cases;
+      // Teams Mode stays scenario-only.
+      return cases.map((item) => ({
+        ...item,
+        type: "scenario",
+      }));
     }
 
-    return getLevelCases(selectedLevel);
+    if (mode === "solo") {
+      return getIndividualQuestions(selectedLevel);
+    }
+
+    return [];
   }, [mode, selectedLevel]);
 
   const currentCase = activeCases[currentIndex];
-
   const isTeamsMode = mode === "teams";
+  const isMCQ = currentCase?.type === "mcq";
 
   const currentTeamName = isTeamsMode
     ? activeTeams[activeTeam]
@@ -165,6 +229,32 @@ export default function Challenge() {
   const submitAnswer = () => {
     if (!selectedAnswer || !currentCase) return;
 
+    if (isMCQ) {
+      const answerCorrect =
+        selectedAnswer === currentCase.correctAnswer;
+
+      const pointsEarned = answerCorrect ? 100 : 0;
+
+      const result = {
+        caseId: currentCase.id,
+        type: "mcq",
+        company: currentCase.company,
+        title: currentCase.title,
+        selectedAnswer,
+        correctAnswer: currentCase.correctAnswer,
+        answerCorrect,
+        pitchCorrect: null,
+        pointsEarned,
+      };
+
+      updateTeamScore(currentTeamName, pointsEarned);
+      updatePlayerStats(currentTeamName, answerCorrect);
+      setRoundScore((previous) => previous + pointsEarned);
+      setRoundResults((previous) => [...previous, result]);
+      setPhase("feedback");
+      return;
+    }
+
     setPhase("pitch");
   };
 
@@ -183,6 +273,7 @@ export default function Challenge() {
 
     const result = {
       caseId: currentCase.id,
+      type: "scenario",
       company: currentCase.company,
       title: currentCase.title || currentCase.company,
       selectedAnswer,
@@ -211,7 +302,9 @@ export default function Challenge() {
       setPhase("question");
 
       if (isTeamsMode) {
-        setActiveTeam((previous) => (previous + 1) % activeTeams.length);
+        setActiveTeam(
+          (previous) => (previous + 1) % activeTeams.length
+        );
       }
 
       return;
@@ -282,6 +375,9 @@ export default function Challenge() {
     const nextLevel = Math.min(4, selectedLevel + 1);
     startGame("solo", nextLevel);
   };
+  if (mode === "teams") {
+  return <TeamMode onBack={resetToMenu} />;
+}
 
   if (phase === "setup") {
     return (
@@ -341,13 +437,11 @@ export default function Challenge() {
                   unlockedLevel
                 );
 
-                const disabled = status === "locked";
-
                 return (
                   <button
                     key={level.id}
                     className={`pr-level-card ${level.color} ${status}`}
-                    disabled={disabled}
+                    disabled={status === "locked"}
                     onClick={() => startGame("solo", level.id)}
                   >
                     <div className="pr-level-top">
@@ -373,6 +467,7 @@ export default function Challenge() {
             </div>
 
             <p className="pr-note">
+              Each level contains 5 scenarios and 5 knowledge questions.
               Score at least {LEVEL_PASS_SCORE}% to unlock the next level.
             </p>
           </div>
@@ -456,9 +551,7 @@ export default function Challenge() {
     return (
       <section className="pr-game">
         <div className="pr-results-panel">
-          <span className="pr-eyebrow">
-            MISSION COMPLETE
-          </span>
+          <span className="pr-eyebrow">MISSION COMPLETE</span>
 
           <div className="pr-results-icon">
             {lastRound.mode === "teams"
@@ -483,7 +576,7 @@ export default function Challenge() {
               </div>
               <p>
                 You earned {lastRound.score} out of{" "}
-                {activeCases.length * 100} points.
+                {lastRound.results.length * 100} points.
               </p>
               <p className="pr-result-message">
                 {lastRound.passed
@@ -501,9 +594,7 @@ export default function Challenge() {
                   key={team.name}
                 >
                   <span className="pr-rank">
-                    {index === 0
-                      ? "🏆"
-                      : `#${index + 1}`}
+                    {index === 0 ? "🏆" : `#${index + 1}`}
                   </span>
                   <strong>{team.name}</strong>
                   <span className="pr-team-score">
@@ -523,19 +614,25 @@ export default function Challenge() {
           <div className="pr-results-breakdown">
             <h3>MISSION REVIEW</h3>
             {lastRound.results.map((result, index) => (
-              <div className="pr-review-row" key={result.caseId}>
-                <span>
-                  {result.answerCorrect ? "✓" : "○"}
-                </span>
+              <div
+                className="pr-review-row"
+                key={`${result.caseId}-${index}`}
+              >
+                <span>{result.answerCorrect ? "✓" : "○"}</span>
                 <div>
                   <strong>
                     {index + 1}. {result.title}
                   </strong>
                   <p>
-                    Your decision: {result.selectedAnswer}
+                    Your answer: {result.selectedAnswer}
                     {" • "}
-                    Best fit: {result.correctAnswer}
+                    Correct answer: {result.correctAnswer}
                   </p>
+                  {result.type === "scenario" && (
+                    <p>
+                      Pitch: {result.selectedPitch || "—"}
+                    </p>
+                  )}
                 </div>
                 <b>+{result.pointsEarned}</b>
               </div>
@@ -585,7 +682,10 @@ export default function Challenge() {
   if (!currentCase) {
     return (
       <section className="pr-game">
-        <p>No missions found for this level yet.</p>
+        <p>
+          No questions found for this level. Check your quizQuestions.js
+          file and make sure it exports 20 questions.
+        </p>
         <button
           className="pr-primary-button"
           onClick={resetToMenu}
@@ -638,7 +738,8 @@ export default function Challenge() {
         </div>
 
         <span className="pr-case-counter">
-          CASE {currentIndex + 1} / {activeCases.length}
+          {isMCQ ? "QUESTION" : "CASE"} {currentIndex + 1} /{" "}
+          {activeCases.length}
         </span>
       </div>
 
@@ -661,106 +762,127 @@ export default function Challenge() {
         </div>
       )}
 
-      <article className="pr-case-card">
+      <article
+        className={`pr-case-card ${isMCQ ? "pr-mcq-card" : ""}`}
+      >
         <div className="pr-case-meta">
           <span>{currentCase.companyType}</span>
           <span>{currentCase.difficulty}</span>
+          {isMCQ && <span>KNOWLEDGE CHECK</span>}
         </div>
 
-        <h1>
-          {currentCase.title || currentCase.company}
-        </h1>
+        <h1>{currentCase.title || currentCase.company}</h1>
 
-        <div className="pr-company-banner">
-          <div className="pr-company-avatar">
-            {currentCase.company?.charAt(0) || "P"}
+        {isMCQ ? (
+          <div className="pr-situation-box">
+            <span className="pr-eyebrow">YOUR QUESTION</span>
+            <p>{currentCase.question}</p>
           </div>
-          <div>
-            <span>COMPANY / ORGANIZATION</span>
-            <strong>{currentCase.company}</strong>
-          </div>
-          <span className="pr-local-tag">MINYA CASE</span>
-        </div>
+        ) : (
+          <>
+            <div className="pr-company-banner">
+              <div className="pr-company-avatar">
+                {currentCase.company?.charAt(0) || "P"}
+              </div>
+              <div>
+                <span>COMPANY / ORGANIZATION</span>
+                <strong>{currentCase.company}</strong>
+              </div>
+              <span className="pr-local-tag">MINYA CASE</span>
+            </div>
 
-        <div className="pr-situation-box">
-          <span className="pr-eyebrow">THE SITUATION</span>
-          <p>{currentCase.situation}</p>
-        </div>
+            <div className="pr-situation-box">
+              <span className="pr-eyebrow">THE SITUATION</span>
+              <p>{currentCase.situation}</p>
+            </div>
+          </>
+        )}
 
         {phase === "question" && (
           <>
-            <button
-              className="pr-intel-toggle"
-              onClick={() =>
-                setShowCompanyIntel((previous) => !previous)
-              }
-            >
-              {showCompanyIntel
-                ? "− Hide company intelligence"
-                : "+ Open company intelligence"}
-            </button>
+            {!isMCQ && (
+              <>
+                <button
+                  className="pr-intel-toggle"
+                  onClick={() =>
+                    setShowCompanyIntel((previous) => !previous)
+                  }
+                >
+                  {showCompanyIntel
+                    ? "− Hide company intelligence"
+                    : "+ Open company intelligence"}
+                </button>
 
-            {showCompanyIntel && (
-              <div className="pr-intel-panel">
-                <div>
-                  <h3>Company Goals</h3>
-                  <ul>
-                    {(companyProfile.goals || []).map((goal) => (
-                      <li key={goal}>{goal}</li>
-                    ))}
-                  </ul>
-                </div>
+                {showCompanyIntel && (
+                  <div className="pr-intel-panel">
+                    <div>
+                      <h3>Company Goals</h3>
+                      <ul>
+                        {(companyProfile.goals || []).map((goal) => (
+                          <li key={goal}>{goal}</li>
+                        ))}
+                      </ul>
+                    </div>
 
-                <div>
-                  <h3>Target Audience</h3>
-                  <p>
-                    {companyProfile.targetAudience ||
-                      "Not specified in this training case."}
-                  </p>
-                </div>
+                    <div>
+                      <h3>Target Audience</h3>
+                      <p>
+                        {companyProfile.targetAudience ||
+                          "Not specified in this training case."}
+                      </p>
+                    </div>
 
-                <div>
-                  <h3>Available Resources</h3>
-                  <div className="pr-chip-list">
-                    {(companyProfile.availableResources || []).map(
-                      (resource) => (
-                        <span key={resource}>{resource}</span>
-                      )
-                    )}
+                    <div>
+                      <h3>Available Resources</h3>
+                      <div className="pr-chip-list">
+                        {(companyProfile.availableResources || []).map(
+                          (resource) => (
+                            <span key={resource}>{resource}</span>
+                          )
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3>Opportunity Goal</h3>
+                      <p>
+                        {opportunity.goal ||
+                          "Review the situation to identify the goal."}
+                      </p>
+                    </div>
+
+                    <div>
+                      <h3>Collaboration History</h3>
+                      <p>
+                        {companyProfile.history ||
+                          "No history supplied in this fictional case."}
+                      </p>
+                    </div>
+
+                    <p className="pr-fiction-note">
+                      Training scenario: verify real company information
+                      before using it in an actual PR pitch.
+                    </p>
                   </div>
-                </div>
-
-                <div>
-                  <h3>Opportunity Goal</h3>
-                  <p>
-                    {opportunity.goal ||
-                      "Review the situation to identify the goal."}
-                  </p>
-                </div>
-
-                <div>
-                  <h3>Collaboration History</h3>
-                  <p>
-                    {companyProfile.history ||
-                      "No history supplied in this fictional case."}
-                  </p>
-                </div>
-
-                <p className="pr-fiction-note">
-                  Training scenario: verify real company information
-                  before using it in an actual PR pitch.
-                </p>
-              </div>
+                )}
+              </>
             )}
 
             <div className="pr-question-area">
-              <span className="pr-eyebrow">MAKE YOUR DECISION</span>
+              <span className="pr-eyebrow">
+                {isMCQ ? "TEST YOUR KNOWLEDGE" : "MAKE YOUR DECISION"}
+              </span>
+
               <h2>
-                What type of relationship fits this opportunity best?
+                {isMCQ
+                  ? "Choose the correct answer."
+                  : "What type of relationship fits this opportunity best?"}
               </h2>
+
               <p>
-                Think about the goal, the exchange, and each side's
-                contribution — not just the company name.
+                {isMCQ
+                  ? "Select one answer. You'll see the explanation after submitting."
+                  : "Think about the goal, the exchange, and each side's contribution — not just the company name."}
               </p>
 
               <div className="pr-answer-grid">
@@ -773,7 +895,7 @@ export default function Challenge() {
                     onClick={() => setSelectedAnswer(option)}
                   >
                     <span className="pr-answer-number">
-                      0{index + 1}
+                      {String.fromCharCode(65 + index)}
                     </span>
                     <strong>{option}</strong>
                     <span className="pr-answer-mark">
@@ -788,15 +910,17 @@ export default function Challenge() {
                 disabled={!selectedAnswer}
                 onClick={submitAnswer}
               >
-                CONFIRM DECISION →
+                {isMCQ ? "SUBMIT ANSWER →" : "CONFIRM DECISION →"}
               </button>
             </div>
           </>
         )}
 
-        {phase === "pitch" && (
+        {phase === "pitch" && !isMCQ && (
           <div className="pr-question-area">
-            <span className="pr-eyebrow">ROUND 2 / BUILD YOUR PITCH</span>
+            <span className="pr-eyebrow">
+              ROUND 2 / BUILD YOUR PITCH
+            </span>
             <h2>What would your proposal focus on?</h2>
             <p>
               Your decision is only part of the job. Pick the pitch
@@ -812,9 +936,7 @@ export default function Challenge() {
                   }`}
                   onClick={() => setSelectedPitch(pitch.id)}
                 >
-                  <span className="pr-pitch-label">
-                    {pitch.id}
-                  </span>
+                  <span className="pr-pitch-label">{pitch.id}</span>
                   <strong>{pitch.title}</strong>
                   <p>{pitch.description}</p>
                   <span>
@@ -865,51 +987,61 @@ export default function Challenge() {
                 : "!"}
             </div>
 
-            <span className="pr-eyebrow">MISSION FEEDBACK</span>
+            <span className="pr-eyebrow">
+              {isMCQ ? "ANSWER EXPLANATION" : "MISSION FEEDBACK"}
+            </span>
+
             <h2>
               {selectedAnswer === currentCase.correctAnswer
-                ? "Strong decision!"
-                : "Let's review your decision"}
+                ? isMCQ
+                  ? "Correct answer!"
+                  : "Strong decision!"
+                : "Let's review your answer"}
             </h2>
 
             <div className="pr-points-earned">
               +
-              {(selectedAnswer === currentCase.correctAnswer
-                ? 70
-                : 0) +
-                (selectedPitch === currentCase.correctAnswer
-                  ? 30
-                  : 0)}{" "}
+              {isMCQ
+                ? selectedAnswer === currentCase.correctAnswer
+                  ? 100
+                  : 0
+                : (selectedAnswer === currentCase.correctAnswer
+                    ? 70
+                    : 0) +
+                  (selectedPitch === currentCase.correctAnswer
+                    ? 30
+                    : 0)}{" "}
               POINTS
             </div>
 
             <p>{feedback}</p>
 
             <div className="pr-correct-answer">
-              <span>BEST FIT FOR THIS CASE</span>
+              <span>CORRECT ANSWER</span>
               <strong>{currentCase.correctAnswer}</strong>
             </div>
 
-            <div className="pr-pitch-feedback">
-              <h3>Your Pitch</h3>
-              <p>
-                {selectedPitch === currentCase.correctAnswer
-                  ? "Your pitch approach matches the primary relationship in this scenario."
-                  : "Review whether your pitch matches the relationship you are proposing. A different arrangement could work if the agreement changes."}
-              </p>
+            {!isMCQ && (
+              <div className="pr-pitch-feedback">
+                <h3>Your Pitch</h3>
+                <p>
+                  {selectedPitch === currentCase.correctAnswer
+                    ? "Your pitch approach matches the primary relationship in this scenario."
+                    : "Review whether your pitch matches the relationship you are proposing. A different arrangement could work if the agreement changes."}
+                </p>
 
-              <h3>Suggested Ask</h3>
-              <p>{currentCase.ask}</p>
+                <h3>Suggested Ask</h3>
+                <p>{currentCase.ask}</p>
 
-              <h3>Suggested Offer</h3>
-              <p>{currentCase.offer}</p>
-            </div>
+                <h3>Suggested Offer</h3>
+                <p>{currentCase.offer}</p>
+              </div>
+            )}
 
             <div className="pr-learning-point">
               <span>💡 THE TAKEAWAY</span>
               <p>
-                {currentCase.learningPoint ||
-                  currentCase.explanation}
+                {currentCase.learningPoint || currentCase.explanation}
               </p>
             </div>
 
@@ -918,7 +1050,7 @@ export default function Challenge() {
               onClick={nextCase}
             >
               {currentIndex < activeCases.length - 1
-                ? "NEXT CASE →"
+                ? "NEXT QUESTION →"
                 : "VIEW RESULTS →"}
             </button>
           </div>

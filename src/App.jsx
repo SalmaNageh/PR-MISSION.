@@ -1,23 +1,36 @@
-import './App.css'
-import Challenge from './components/Challenge'
-import logo from './assets/enactus-logo-6.png'
+
+import { useState } from 'react';
+import './App.css';
+import Challenge from './components/Challenge';
+import Auth from './components/Auth';
+import logo from './assets/enactus-logo-6.png';
+
 function App() {
+  const [showAuth, setShowAuth] = useState(false);
+
+  // Open the authentication page for Teams Mode
+  if (showAuth) {
+    return <Auth onBack={() => setShowAuth(false)} />;
+  }
+
   return (
     <div className="app">
 
       {/* Navbar */}
       <nav className="navbar">
         <div className="brand-lockup">
-          <img src={logo} alt="Enactus" className="enactus-logo"
-
+          <img
+            src={logo}
+            alt="Enactus"
+            className="enactus-logo"
           />
 
-  <span className="brand-divider"></span>
+          <span className="brand-divider"></span>
 
-  <div className="logo">
-    <span>PR</span> MISSION
-  </div>
-</div>
+          <div className="logo">
+            <span>PR</span> MISSION
+          </div>
+        </div>
 
         <div className="nav-links">
           <a href="#home">Home</a>
@@ -25,6 +38,16 @@ function App() {
           <a href="#challenge">Challenge</a>
         </div>
 
+        {/* Teams Mode */}
+        <button
+          className="nav-button"
+          type="button"
+          onClick={() => setShowAuth(true)}
+        >
+          Teams Mode
+        </button>
+
+        {/* Individual Mode - existing challenge */}
         <button
           className="nav-button"
           type="button"
@@ -37,14 +60,11 @@ function App() {
         >
           Start Mission
         </button>
-           </nav>
-
+      </nav>
 
       {/* Hero */}
       <section id="home" className="hero">
-
         <div className="hero-content">
-
           <p className="eyebrow">
             PR TRAINING EXPERIENCE
           </p>
@@ -60,7 +80,6 @@ function App() {
           </p>
 
           <div className="hero-buttons">
-
             <a href="#learn" className="primary-button">
               Start Learning →
             </a>
@@ -68,16 +87,11 @@ function App() {
             <a href="#challenge" className="secondary-button">
               Try a Challenge
             </a>
-
           </div>
-
         </div>
 
-
         <div className="hero-visual">
-
           <div className="mission-card">
-
             <div className="card-top">
               <span>PR MISSION</span>
               <span>01</span>
@@ -90,7 +104,6 @@ function App() {
             </h3>
 
             <div className="mini-options">
-
               <div className="mini-option sponsor">
                 <span>01</span>
                 Sponsor
@@ -105,21 +118,14 @@ function App() {
                 <span>03</span>
                 CSR
               </div>
-
             </div>
-
           </div>
-
         </div>
-
       </section>
-
 
       {/* Learn */}
       <section id="learn" className="learn-section">
-
         <div className="section-heading">
-
           <p className="eyebrow">
             STEP 01
           </p>
@@ -133,22 +139,15 @@ function App() {
             Before approaching a company, you need to understand
             what kind of relationship you're trying to build.
           </p>
-
         </div>
-
 
         <div className="relationship-grid">
 
           {/* Sponsor */}
           <article className="relationship-card sponsor-card">
+            <div className="card-number">01</div>
 
-            <div className="card-number">
-              01
-            </div>
-
-            <div className="relationship-icon">
-              💰
-            </div>
+            <div className="relationship-icon"></div>
 
             <h3>Sponsor</h3>
 
@@ -176,20 +175,13 @@ function App() {
                 financially and gets branding across the event.
               </p>
             </div>
-
           </article>
-
 
           {/* Partner */}
           <article className="relationship-card partner-card">
+            <div className="card-number">02</div>
 
-            <div className="card-number">
-              02
-            </div>
-
-            <div className="relationship-icon">
-              🤝
-            </div>
+            <div className="relationship-icon"></div>
 
             <h3>Partner</h3>
 
@@ -217,20 +209,13 @@ function App() {
                 a university event while reaching students.
               </p>
             </div>
-
           </article>
-
 
           {/* CSR */}
           <article className="relationship-card csr-card">
+            <div className="card-number">03</div>
 
-            <div className="card-number">
-              03
-            </div>
-
-            <div className="relationship-icon">
-              🌱
-            </div>
+            <div className="relationship-icon"></div>
 
             <h3>CSR</h3>
 
@@ -257,19 +242,14 @@ function App() {
                 for students as part of its community impact.
               </p>
             </div>
-
           </article>
 
         </div>
-
       </section>
-
 
       {/* Difference */}
       <section className="difference-section">
-
         <div className="section-heading">
-
           <p className="eyebrow">
             THE KEY DIFFERENCE
           </p>
@@ -278,12 +258,9 @@ function App() {
             Don't just know the terms.
             <span> Understand the strategy.</span>
           </h2>
-
         </div>
 
-
         <div className="comparison">
-
           <div className="comparison-header">
             <span>Relationship</span>
             <span>Main Goal</span>
@@ -307,15 +284,10 @@ function App() {
             <span>Social Impact</span>
             <span>Community & Responsibility</span>
           </div>
-
         </div>
 
-
         <div className="golden-rule">
-
-          <div className="rule-icon">
-            💡
-          </div>
+          <div className="rule-icon"></div>
 
           <div>
             <p className="rule-label">
@@ -327,31 +299,24 @@ function App() {
             </h3>
 
             <p>
-              Ask:
+              Ask:{' '}
               <strong>
                 "What kind of relationship makes sense
                 for this specific opportunity?"
               </strong>
             </p>
           </div>
-
         </div>
-
       </section>
 
-
-      {/* Challenge */}
-   
+      {/* Individual Mode - keep the existing Challenge */}
       <section id="challenge">
-
-      <Challenge />
-
+        <Challenge />
       </section>
 
+      {/* Footer */}
       <footer>
-        <p>
-          PR MISSION
-        </p>
+        <p>PR MISSION</p>
 
         <span>
           Learn. Decide. Build Relationships.
@@ -359,7 +324,7 @@ function App() {
       </footer>
 
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

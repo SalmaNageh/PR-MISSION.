@@ -872,3 +872,72 @@
     width: 100%;
   }
 }
+
+/* Make MCQ answer options clearly visible */
+.pr-game .pr-mcq-options {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  width: 100%;
+  margin-top: 22px;
+}
+
+.pr-game .pr-mcq-options .pr-answer-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  min-height: 85px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 16px;
+  color: #ffffff;
+  background: #222222;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  opacity: 1;
+  visibility: visible;
+  text-align: left;
+}
+
+.pr-game .pr-mcq-options .pr-answer-number {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  border-radius: 8px;
+  background: #f5c400;
+  color: #151515;
+}
+
+.pr-game .pr-mcq-options .pr-answer-card strong {
+  display: block;
+  flex: 1;
+  color: #ffffff;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.pr-game .pr-mcq-options .pr-answer-mark {
+  flex-shrink: 0;
+  margin: 0;
+  color: #f5c400;
+}
+
+.pr-game .pr-mcq-options .pr-answer-card.chosen {
+  background: rgba(245, 196, 0, 0.12);
+  border-color: #f5c400;
+}
+
+.pr-game .pr-options-error {
+  grid-column: 1 / -1;
+  color: #ff7777;
+}
+
+@media (max-width: 600px) {
+  .pr-game .pr-mcq-options {
+    grid-template-columns: 1fr;
+  }
+}
