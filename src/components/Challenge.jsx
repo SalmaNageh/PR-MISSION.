@@ -398,7 +398,7 @@ export default function Challenge() {
             className={`pr-mode-card ${mode === "solo" ? "selected" : ""}`}
             onClick={() => setMode("solo")}
           >
-            <span className="pr-mode-icon">🎯</span>
+            <span className="pr-mode-icon"></span>
             <span className="pr-card-tag">INDIVIDUAL</span>
             <h2>Level Mode</h2>
             <p>
