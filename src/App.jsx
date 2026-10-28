@@ -4,6 +4,7 @@ import './App.css';
 import Challenge from './components/Challenge';
 import Auth from './components/Auth';
 import logo from './assets/enactus-logo-6.png';
+import PRSessions from './components/PRSessions';
 
 function App() {
   const [showAuth, setShowAuth] = useState(false);
@@ -35,6 +36,7 @@ function App() {
         <div className="nav-links">
           <a href="#home">Home</a>
           <a href="#learn">Learn</a>
+          <a href="#sessions">PR Sessions</a>
           <a href="#challenge">Challenge</a>
         </div>
 
@@ -46,6 +48,8 @@ function App() {
         >
           Teams Mode
         </button>
+      
+      
 
         {/* Individual Mode - existing challenge */}
         <button
@@ -308,6 +312,8 @@ function App() {
           </div>
         </div>
       </section>
+      <PRSessions />
+
 
       {/* Individual Mode - keep the existing Challenge */}
       <section id="challenge">

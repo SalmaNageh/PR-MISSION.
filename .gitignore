@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+/public/pdfs/Money Behind The scene-1.pdf
+/public/pdfs/PR UNLOCKED.pdf
